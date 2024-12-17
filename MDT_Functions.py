@@ -161,7 +161,7 @@ def simulateReponse():
     spatDet = normScaler(np.prod(detArray, axis=0))   
     spatDet = spatDet * popPX
     responseValues["Detection"] = spatDet  
-    print(np.mean(spatDet))
+    # print(np.mean(spatDet))
     global meanDetection
     meanDetection = np.mean(spatDet[spatDet != 0])
     print("The mean instantaneous probability of detection across occupied cells, for any randomly moveing individual, is " + str(round(meanDetection,4)));print('')
@@ -187,7 +187,6 @@ def simulateReponse():
         plt.title(i + str(np.amin(pltDat)) + "_" + str(np.amax(pltDat)))
         plt.imshow(pltDat)
         plt.show() 
-
   
 def simulateOccupancyData():
     
@@ -284,7 +283,7 @@ def simulateOccupancyData():
             ScenName = str(sn) + "_" + str(dn)
             os.makedirs(cwd + '/Data/DetectionHistories/' + ScenName)    
 
-            simN = 50        
+            simN = 10       
             for simn in range(simN):        
                 DetectionHistory = []
                 
