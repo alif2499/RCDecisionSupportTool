@@ -21,102 +21,79 @@ vdriver = ogr.GetDriverByName('ESRI Shapefile')
 def normScaler (inArray):
     outArray = (inArray - np.min(inArray)) / (np.max(inArray) - np.min(inArray))
     return outArray
+#######################################################################################################################
+# # For trueOcc value--------------------------------------------------------
+# # Error message
+# trueOcc_error_label = widgets.Label(value="❌ Error: Please enter a number between 0 and 1 then press submit again", style={'color': 'red'})
 
-# For trueOcc value--------------------------------------------------------
-# Error message
-trueOcc_error_label = widgets.Label(value="❌ Error: Please enter a number between 0 and 1 then press submit again", style={'color': 'red'})
+# # trueOcc widget
+# trueOcc_resp_widget = widgets.FloatText(
+#             description= "True Occupncy: ",
+#             min=0.0, max=1.0, step=0.01, value=0.0  # Default value set to 0.5
+#         )
 
-# trueOcc widget
-trueOcc_resp_widget = widgets.FloatText(
-            description= "True Occupncy: ",
-            min=0.0, max=1.0, step=0.01, value=0.0  # Default value set to 0.5
-        )
+# trueOcc_button = widgets.Button(description="Submit")
 
-trueOcc_button = widgets.Button(description="Submit")
+# # Create an Output widget to display the message
+# trueOcc_output = widgets.Output()
 
-# Create an Output widget to display the message
-trueOcc_output = widgets.Output()
 
-# Define the on_click function
-def trueOcc_on_button_click(b):
-    with trueOcc_output:
-        trueOcc_output.clear_output()  # Clear previous output
-        if not 0 <=trueOcc_resp_widget.value <=1:
-            display(trueOcc_error_label)
-        else:
-            trueOcc = trueOcc_resp_widget.value
-            occThreshold = np.quantile(responseValues["Use"], 1 - trueOcc)        
-            responseValues["Occupancy"] = np.zeros(shape=responseValues["Use"].shape)
-            responseValues["Occupancy"][responseValues["Use"] > occThreshold] = 1 
-            global pxN
-            pxN = sum( [1 for line in responseValues["Occupancy"] for x in line if x ==1 ] )
-            cellArea = cell_size ** 2
-            global saAreaKM
-            saAreaKM = (cellArea/1000000) * pxN
-            print("There are " + str(pxN) + " occupied pixels (" + str(saAreaKM) + " km occupied area). This leads to an instantaneous probability of detection in any cell for one, randomly moving, individual of " + str(round(1/pxN,4)));print('')
+# # For dense values---------------------------------------------------------
+# # Error message
+# dens_error_label = widgets.Label(value="❌ Error: Please enter a number between 0.001 and 1 then press submit again", style={'color': 'red'})
+
+# # integer widget
+# dens_resp_widget = widgets.FloatText(
+#             description= "Dense; ",
+#             min=0.0, max=1.0, step=0.01, value=0.0  # Default value set to 0.5
+#         )
+
+# # int Button widget
+# dens_button = widgets.Button(description="Submit")
+
+# # Create an Output widget to display the message
+# dens_output = widgets.Output()
+
+
+# # SPATIAL PROBABILITY OF DETECTION----------------------------------------------
+# spatial_prob_button = widgets.Button(description="calculate")
+
+# # Create an Output widget to display the message
+# spatial_output = widgets.Output()
+
+#######################################################################################################################
+
+# Create two integer sliders A and B
+slider_A = widgets.IntSlider(min=0, max=1, step=0.01, value=0.5, description="A:")
+slider_B = widgets.IntSlider(min=0.001, max=1, step=0.001, value=0.5, description="B:")
+
+# Output widgets for displaying values and the bar chart
+value_output = widgets.Output()
+plot_output = widgets.Output()
+
+# Function to update the bar chart dynamically based on equation 2A + 3B
+def update_bar_chart(A, B):
+    with plot_output:
+        plot_output.clear_output(wait=True)  # Clear previous plot
+
+        trueOcc = A
+        occThreshold = np.quantile(responseValues["Use"], 1 - trueOcc)        
+        responseValues["Occupancy"] = np.zeros(shape=responseValues["Use"].shape)
+        responseValues["Occupancy"][responseValues["Use"] > occThreshold] = 1 
+        global pxN
+        global popPX
+        pxN = sum( [1 for line in responseValues["Occupancy"] for x in line if x ==1 ] )
+        cellArea = cell_size ** 2
+        global saAreaKM
+        saAreaKM = (cellArea/1000000) * pxN
+        print("There are " + str(pxN) + " occupied pixels (" + str(saAreaKM) + " km occupied area). This leads to an instantaneous probability of detection in any cell for one, randomly moving, individual of " + str(round(1/pxN,4)));print('')
+    
+        ###########################
+        ## SPATIAL PROBABILITY OF USE FOR A POPULATION 
+        """ Density will apply to a number of
+        animals over the area of the occupied cells """   
+        print('------------------')
         
-            ###########################
-            ## SPATIAL PROBABILITY OF USE FOR A POPULATION 
-            """ Density will apply to a number of
-            animals over the area of the occupied cells """   
-            print('------------------')
-
-# Attach the function to the button
-trueOcc_button.on_click(trueOcc_on_button_click)
-
-# Arrange the widgets in a horizontal box
-trueOcc_hbox = widgets.HBox([trueOcc_resp_widget, trueOcc_button, trueOcc_output])
-
-# For dense values---------------------------------------------------------
-# Error message
-dens_error_label = widgets.Label(value="❌ Error: Please enter a number between 0.001 and 1 then press submit again", style={'color': 'red'})
-
-# integer widget
-dens_resp_widget = widgets.FloatText(
-            description= "Dense; ",
-            min=0.0, max=1.0, step=0.01, value=0.0  # Default value set to 0.5
-        )
-
-# int Button widget
-dens_button = widgets.Button(description="Submit")
-
-# Create an Output widget to display the message
-dens_output = widgets.Output()
-
-# Define the on_click function
-def dens_on_button_click(b):
-    with dens_output:
-        dens_output.clear_output()  # Clear previous output
-        if not 0.001 <=dens_resp_widget.value <=1:
-            display(dens_error_label)
-        else:
-            dens = dens_resp_widget.value
-            global N
-            N = float(dens) * saAreaKM
-            global popPX
-            popPX = N/pxN   
-            if popPX > 1:
-                popPX = 1
-            print('') 
-            print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
-            display(spatial_hbox)
-            
-# Attach the function to the button
-dens_button.on_click(dens_on_button_click)
-
-# Arrange the widgets in a horizontal box
-dens_hbox = widgets.HBox([dens_resp_widget, dens_button, dens_output])
-
-# SPATIAL PROBABILITY OF DETECTION----------------------------------------------
-spatial_prob_button = widgets.Button(description="calculate")
-
-# Create an Output widget to display the message
-spatial_output = widgets.Output()
-
-# Define the on_click function
-def spatial_on_button_click(responseValues, b):
-    with spatial_output:
-        spatial_output.clear_output()  # Clear previous output
         ## SPATIAL PROBABILITY OF DETECTION    
         """ Use the product of occupancy and use to 
         extract the probability of use at occupied 
@@ -134,6 +111,16 @@ def spatial_on_button_click(responseValues, b):
         meanDetection = np.mean(spatDet[spatDet != 0])
         print("The mean instantaneous probability of detection across occupied cells, for any randomly moveing individual, is " +    str(round(meanDetection,4)));print('')
 
+        dens = B
+        global N
+        N = float(dens) * saAreaKM
+        
+        popPX = N/pxN   
+        if popPX > 1:
+            popPX = 1
+        print('') 
+        print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
+
         ## RASTER OUTPUTS
         for res in responseValues:
             responsePath = cwd + "/Data/SpatialLayers/Simulated" + res + r'.tif'
@@ -147,9 +134,8 @@ def spatial_on_button_click(responseValues, b):
         ##  PLOTTING
         print("Finished calculating distribution vars:", list(responseValues.keys()))
         # Create an Output widget
-        out = widgets.Output() # added by alif---------------------------
-    
-        with out: # added by alif---------------------------
+        out = widgets.Output() 
+        with out:
             for i in responseValues:
                 plt.close()
                 pltDat = responseValues[i]
@@ -158,38 +144,164 @@ def spatial_on_button_click(responseValues, b):
                 plt.show()
                 
         # Display the widget
-        display(out) # added by alif---------------------------
+        display(out) 
 
+
+
+
+# Function to print slider values dynamically
+def update_values(change):
+    with value_output:
+        value_output.clear_output(wait=True)
+        A, B = slider_A.value, slider_B.value
+        print(f"Slider A: {A}, Slider B: {B}, 2A + 3B: {2*A + 3*B}")
+    update_bar_chart(A, B)  # Update chart when sliders change
+
+# Attach the function to both sliders
+slider_A.observe(update_values, names='value')
+slider_B.observe(update_values, names='value')
+
+
+
+
+
+
+
+
+# # Define the on_click function
+# def trueOcc_on_button_click(b):
+#     with trueOcc_output:
+#         trueOcc_output.clear_output()  # Clear previous output
+#         if not 0 <=trueOcc_resp_widget.value <=1:
+#             display(trueOcc_error_label)
+#         else:
+#             trueOcc = trueOcc_resp_widget.value
+#             occThreshold = np.quantile(responseValues["Use"], 1 - trueOcc)        
+#             responseValues["Occupancy"] = np.zeros(shape=responseValues["Use"].shape)
+#             responseValues["Occupancy"][responseValues["Use"] > occThreshold] = 1 
+#             global pxN
+#             pxN = sum( [1 for line in responseValues["Occupancy"] for x in line if x ==1 ] )
+#             cellArea = cell_size ** 2
+#             global saAreaKM
+#             saAreaKM = (cellArea/1000000) * pxN
+#             print("There are " + str(pxN) + " occupied pixels (" + str(saAreaKM) + " km occupied area). This leads to an instantaneous probability of detection in any cell for one, randomly moving, individual of " + str(round(1/pxN,4)));print('')
+        
+#             ###########################
+#             ## SPATIAL PROBABILITY OF USE FOR A POPULATION 
+#             """ Density will apply to a number of
+#             animals over the area of the occupied cells """   
+#             print('------------------')
+
+# # Attach the function to the button
+# trueOcc_button.on_click(trueOcc_on_button_click)
+
+# # Arrange the widgets in a horizontal box
+# trueOcc_hbox = widgets.HBox([trueOcc_resp_widget, trueOcc_button, trueOcc_output])
+
+
+# # Define the on_click function
+# def dens_on_button_click(b):
+#     with dens_output:
+#         dens_output.clear_output()  # Clear previous output
+#         if not 0.001 <=dens_resp_widget.value <=1:
+#             display(dens_error_label)
+#         else:
+#             dens = dens_resp_widget.value
+#             global N
+#             N = float(dens) * saAreaKM
+#             global popPX
+#             popPX = N/pxN   
+#             if popPX > 1:
+#                 popPX = 1
+#             print('') 
+#             print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
+#             display(spatial_hbox)
+            
+# # Attach the function to the button
+# dens_button.on_click(dens_on_button_click)
+
+# # Arrange the widgets in a horizontal box
+# dens_hbox = widgets.HBox([dens_resp_widget, dens_button, dens_output])
+
+
+#######################################################################################################################
+# # Define the on_click function
+# def spatial_on_button_click(responseValues, b):
+#     with spatial_output:
+#         spatial_output.clear_output()  # Clear previous output
+#         ## SPATIAL PROBABILITY OF DETECTION    
+#         """ Use the product of occupancy and use to 
+#         extract the probability of use at occupied 
+#         sites only - we are currently assuming perfect
+#         detection at cameras. """
+#         detArray = []
+#         for i in responseValues:
+#             detArray.append(responseValues[i])    
+#         detArray = np.array(detArray)
+#         spatDet = normScaler(np.prod(detArray, axis=0))   
+#         spatDet = spatDet * popPX
+#         responseValues["Detection"] = spatDet  
+#         # print(np.mean(spatDet))
+#         global meanDetection
+#         meanDetection = np.mean(spatDet[spatDet != 0])
+#         print("The mean instantaneous probability of detection across occupied cells, for any randomly moveing individual, is " +    str(round(meanDetection,4)));print('')
+
+#         ## RASTER OUTPUTS
+#         for res in responseValues:
+#             responsePath = cwd + "/Data/SpatialLayers/Simulated" + res + r'.tif'
+#             rasterizedDS = rdriver.Create(responsePath, n_rows, n_cols, 1, gdal.GetDataTypeByName("Float32"))
+#             rasterizedDS.SetGeoTransform([extent[0], cell_size, 0, extent[3], 0, -1 * cell_size])    
+#             rasterizedDS.SetProjection(srs.ExportToWkt());rasterizedDS.GetRasterBand(1).SetNoDataValue(nodata)
+#             rasterizedDS.GetRasterBand(1).Fill(nodata)
+#             rasterizedDS.GetRasterBand(1).WriteArray(responseValues[res])        
+#             rasterizedDS = None
+#             responsePath = None
+#         ##  PLOTTING
+#         print("Finished calculating distribution vars:", list(responseValues.keys()))
+#         # Create an Output widget
+#         out = widgets.Output() # added by alif---------------------------
+    
+#         with out: # added by alif---------------------------
+#             for i in responseValues:
+#                 plt.close()
+#                 pltDat = responseValues[i]
+#                 plt.title(i + str(np.amin(pltDat)) + "_" + str(np.amax(pltDat)))
+#                 plt.imshow(pltDat)
+#                 plt.show()
+                
+#         # Display the widget
+#         display(out) # added by alif---------------------------
+
+#######################################################################################################################
 
 # Arrange the widgets in a horizontal box
-spatial_hbox = widgets.HBox([spatial_prob_button, spatial_output])
+# spatial_hbox = widgets.HBox([spatial_prob_button, spatial_output])
 
 
 def askQuestion(respType,question):
 
     keepAsking = True
-    while keepAsking:
-        string_resp_widget = widgets.Text(
-            description= question
-        )
+    # while keepAsking:
+    #     string_resp_widget = widgets.Text(
+    #         description= question
+    #     )
 
-        if (respType == "trueOcc"):
-            display(trueOcc_hbox)
-            keepAsking = False
+    #     if (respType == "trueOcc"):
+    #         display(trueOcc_hbox)
+    #         keepAsking = False
                 
-        if (respType == "dense"):            
-            display(dens_hbox)
-            keepAsking = False
+    #     if (respType == "dense"):            
+    #         display(dens_hbox)
+    #         keepAsking = False
         
-        if (respType == "string"):   
-            display(string_resp_widget)
-            if string_resp_widget.value:
-                keepAsking = False
-                return string_resp_widget.value
+    #     if (respType == "string"):   
+    #         display(string_resp_widget)
+    #         if string_resp_widget.value:
+    #             keepAsking = False
+    #             return string_resp_widget.value
 
                 
 def inputSpatial():
-
     global cwd
     cwd = os.getcwd() 
     print(cwd)    
@@ -256,9 +368,15 @@ def simulateReponse():
     
     global trueOcc
     print('------------------')
-    trueOcc = askQuestion("trueOcc","Converting use into occupancy. What is the true proportion of the area that is occupied (number between 0 and 1)?")
-    dens = askQuestion("dense","Simulate a population within the occupied cells using a population density. What is the density of individuals per km2 (0.001 - 1)?")
-    spatial_prob_button.on_click(lambda b: spatial_on_button_click(responseValues, b))
+
+    # Display widgets
+    display(slider_A, slider_B, value_output, plot_output)
+    
+    # Initialize chart on first load
+    update_values(None)
+    # trueOcc = askQuestion("trueOcc","Converting use into occupancy. What is the true proportion of the area that is occupied (number between 0 and 1)?")
+    # dens = askQuestion("dense","Simulate a population within the occupied cells using a population density. What is the density of individuals per km2 (0.001 - 1)?")
+    # spatial_prob_button.on_click(lambda b: spatial_on_button_click(responseValues, b))
 
 
 
