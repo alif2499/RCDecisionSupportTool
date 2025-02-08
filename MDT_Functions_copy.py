@@ -64,8 +64,8 @@ def normScaler (inArray):
 #######################################################################################################################
 
 # Create two integer sliders A and B
-slider_A = widgets.IntSlider(min=0, max=1, step=0.01, value=0.5, description="A:")
-slider_B = widgets.IntSlider(min=0.001, max=1, step=0.001, value=0.5, description="B:")
+slider_A = widgets.FloatSlider(min=0.01, max=1, step=0.1, value=0.5, description="trueOcc:")
+slider_B = widgets.FloatSlider(min=0.001, max=1, step=0.01, value=0.5, description="dense:")
 
 # Output widgets for displaying values and the bar chart
 value_output = widgets.Output()
@@ -75,16 +75,42 @@ plot_output = widgets.Output()
 def update_bar_chart(A, B):
     with plot_output:
         plot_output.clear_output(wait=True)  # Clear previous plot
-
+        
+        global usePredictors
+        global nodata; global cell_size; global extent; global srs; global n_rows; global n_cols    
+        global cwd
+        
+        global responseValues
+        responseValues = {}  
+       
+        ###########################
+        ## PROBABILITY OF USE AS PRODUCT OF INPUT LAYERS (for now)    
+        varArray = []
+        for i in usePredictors:
+            varArray.append(usePredictors[i])      
+        varArray = np.array(varArray)    
+        responseValues["Use"] = normScaler(np.sum(varArray, axis=0))
+        print('------------------')
+        print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
+    
+        ###########################
+        ## CONVERT TO OCCUPANCY
+        """True occupancy translates into a
+        proportion of the landscape occupied.
+        So, the prob of use, which is a function
+        of covariates, needs to be discretized
+        using trueOcc. So, if trueOcc is 0.2, the
+        top twenty percent of prob use values are occupied."""
+        
+        global trueOcc
+        print('------------------')
         trueOcc = A
         occThreshold = np.quantile(responseValues["Use"], 1 - trueOcc)        
         responseValues["Occupancy"] = np.zeros(shape=responseValues["Use"].shape)
         responseValues["Occupancy"][responseValues["Use"] > occThreshold] = 1 
-        global pxN
-        global popPX
+        global pxN, popPX, saAreaKM, N, meanDetection
         pxN = sum( [1 for line in responseValues["Occupancy"] for x in line if x ==1 ] )
         cellArea = cell_size ** 2
-        global saAreaKM
         saAreaKM = (cellArea/1000000) * pxN
         print("There are " + str(pxN) + " occupied pixels (" + str(saAreaKM) + " km occupied area). This leads to an instantaneous probability of detection in any cell for one, randomly moving, individual of " + str(round(1/pxN,4)));print('')
     
@@ -93,6 +119,13 @@ def update_bar_chart(A, B):
         """ Density will apply to a number of
         animals over the area of the occupied cells """   
         print('------------------')
+        dens = B
+        N = float(dens) * saAreaKM
+        popPX = N/pxN   
+        if popPX > 1:
+            popPX = 1
+        print('') 
+        print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
         
         ## SPATIAL PROBABILITY OF DETECTION    
         """ Use the product of occupancy and use to 
@@ -105,21 +138,10 @@ def update_bar_chart(A, B):
         detArray = np.array(detArray)
         spatDet = normScaler(np.prod(detArray, axis=0))   
         spatDet = spatDet * popPX
-        responseValues["Detection"] = spatDet  
-        # print(np.mean(spatDet))
+        responseValues["Detection"] = spatDet
         global meanDetection
         meanDetection = np.mean(spatDet[spatDet != 0])
         print("The mean instantaneous probability of detection across occupied cells, for any randomly moveing individual, is " +    str(round(meanDetection,4)));print('')
-
-        dens = B
-        global N
-        N = float(dens) * saAreaKM
-        
-        popPX = N/pxN   
-        if popPX > 1:
-            popPX = 1
-        print('') 
-        print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
 
         ## RASTER OUTPUTS
         for res in responseValues:
@@ -154,7 +176,7 @@ def update_values(change):
     with value_output:
         value_output.clear_output(wait=True)
         A, B = slider_A.value, slider_B.value
-        print(f"Slider A: {A}, Slider B: {B}, 2A + 3B: {2*A + 3*B}")
+        # print(f"Slider A: {A}, Slider B: {B}, 2A + 3B: {2*A + 3*B}")
     update_bar_chart(A, B)  # Update chart when sliders change
 
 # Attach the function to both sliders
@@ -340,34 +362,34 @@ def inputSpatial():
 
 def simulateReponse():
    
-    global usePredictors
-    global nodata; global cell_size; global extent; global srs; global n_rows; global n_cols    
-    global cwd
+    # global usePredictors
+    # global nodata; global cell_size; global extent; global srs; global n_rows; global n_cols    
+    # global cwd
     
-    global responseValues
-    responseValues = {}  
+    # global responseValues
+    # responseValues = {}  
    
-    ###########################
-    ## PROBABILITY OF USE AS PRODUCT OF INPUT LAYERS (for now)    
-    varArray = []
-    for i in usePredictors:
-        varArray.append(usePredictors[i])      
-    varArray = np.array(varArray)    
-    responseValues["Use"] = normScaler(np.sum(varArray, axis=0))
-    print('------------------')
-    print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
+    # ###########################
+    # ## PROBABILITY OF USE AS PRODUCT OF INPUT LAYERS (for now)    
+    # varArray = []
+    # for i in usePredictors:
+    #     varArray.append(usePredictors[i])      
+    # varArray = np.array(varArray)    
+    # responseValues["Use"] = normScaler(np.sum(varArray, axis=0))
+    # print('------------------')
+    # print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
 
-    ###########################
-    ## CONVERT TO OCCUPANCY
-    """True occupancy translates into a
-    proportion of the landscape occupied.
-    So, the prob of use, which is a function
-    of covariates, needs to be discretized
-    using trueOcc. So, if trueOcc is 0.2, the
-    top twenty percent of prob use values are occupied."""
+    # ###########################
+    # ## CONVERT TO OCCUPANCY
+    # """True occupancy translates into a
+    # proportion of the landscape occupied.
+    # So, the prob of use, which is a function
+    # of covariates, needs to be discretized
+    # using trueOcc. So, if trueOcc is 0.2, the
+    # top twenty percent of prob use values are occupied."""
     
-    global trueOcc
-    print('------------------')
+    # global trueOcc
+    # print('------------------')
 
     # Display widgets
     display(slider_A, slider_B, value_output, plot_output)
