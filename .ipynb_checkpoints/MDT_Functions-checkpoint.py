@@ -200,7 +200,7 @@ def simulateOccupancyData():
     ## SAVE DETECTION HISTORIES LOCATION
     # if os.path.isdir(cwd + '/Data/DetectionHistories'):
         # os.remove(cwd + '/Data/DetectionHistories')
-    os.makedirs(cwd + '/Data/DetectionHistories') 
+    os.makedirs(cwd + '/Data/DetectionHistories', exist_ok=True)
     
     ###########################
     ## DEPLOYMENT SCENARIOS
@@ -281,7 +281,7 @@ def simulateOccupancyData():
             ## POPULATED DECTECTION HISTORIES (NO MISSING DATA FUNCTIONS YET)
            
             ScenName = str(sn) + "_" + str(dn)
-            os.makedirs(cwd + '/Data/DetectionHistories/' + ScenName)    
+            os.makedirs(cwd + '/Data/DetectionHistories/' + ScenName, exist_ok=True)    
 
             simN = 10       
             for simn in range(simN):        

@@ -21,6 +21,7 @@ vdriver = ogr.GetDriverByName('ESRI Shapefile')
 def normScaler (inArray):
     outArray = (inArray - np.min(inArray)) / (np.max(inArray) - np.min(inArray))
     return outArray
+    
 #######################################################################################################################
 # # For trueOcc value--------------------------------------------------------
 # # Error message
@@ -36,7 +37,6 @@ def normScaler (inArray):
 
 # # Create an Output widget to display the message
 # trueOcc_output = widgets.Output()
-
 
 # # For dense values---------------------------------------------------------
 # # Error message
@@ -54,7 +54,6 @@ def normScaler (inArray):
 # # Create an Output widget to display the message
 # dens_output = widgets.Output()
 
-
 # # SPATIAL PROBABILITY OF DETECTION----------------------------------------------
 # spatial_prob_button = widgets.Button(description="calculate")
 
@@ -70,6 +69,7 @@ slider_B = widgets.FloatSlider(min=0.001, max=1, step=0.01, value=0.5, descripti
 # Output widgets for displaying values and the bar chart
 value_output = widgets.Output()
 plot_output = widgets.Output()
+out = widgets.Output()
 
 # Function to update the bar chart dynamically based on equation 2A + 3B
 def update_bar_chart(A, B):
@@ -82,7 +82,7 @@ def update_bar_chart(A, B):
         
         global responseValues
         responseValues = {}  
-       
+        inputSpatial()
         ###########################
         ## PROBABILITY OF USE AS PRODUCT OF INPUT LAYERS (for now)    
         varArray = []
@@ -90,6 +90,8 @@ def update_bar_chart(A, B):
             varArray.append(usePredictors[i])      
         varArray = np.array(varArray)    
         responseValues["Use"] = normScaler(np.sum(varArray, axis=0))
+
+        
         print('------------------')
         print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
     
@@ -155,20 +157,27 @@ def update_bar_chart(A, B):
             responsePath = None
         ##  PLOTTING
         print("Finished calculating distribution vars:", list(responseValues.keys()))
-        # Create an Output widget
-        out = widgets.Output() 
+        # Create an Output widget 
+        # out = widgets.Output()
+
+        # Number of images
+        num_images = len(responseValues)
+        
+        # Create subplots with the required number of columns
+        fig, axes = plt.subplots(1, num_images, figsize=(num_images * 4, 4))  # Dynamic width
+
         with out:
-            for i in responseValues:
-                plt.close()
-                pltDat = responseValues[i]
-                plt.title(i + str(np.amin(pltDat)) + "_" + str(np.amax(pltDat)))
-                plt.imshow(pltDat)
-                plt.show()
+            out.clear_output(wait=True)  # Clear previous plot
+            for ax, (i, pltDat) in zip(axes, responseValues.items()):
+                ax.set_title(f"{i} {np.amin(pltDat):.2f}_{np.amax(pltDat):.2f}")
+                ax.imshow(pltDat, cmap='viridis')  # Adjust colormap as needed
+                ax.axis("off")  # Remove axes for a cleaner view
+            
+            plt.tight_layout()  # Adjust layout to prevent overlap
+            plt.show()
                 
         # Display the widget
-        display(out) 
-
-
+        # display(out)  
 
 
 # Function to print slider values dynamically
@@ -182,6 +191,7 @@ def update_values(change):
 # Attach the function to both sliders
 slider_A.observe(update_values, names='value')
 slider_B.observe(update_values, names='value')
+
 
 
 
@@ -361,38 +371,13 @@ def inputSpatial():
     print("Finished inputing Use vars:", list(usePredictors.keys()));print('')
 
 def simulateReponse():
-   
-    # global usePredictors
-    # global nodata; global cell_size; global extent; global srs; global n_rows; global n_cols    
-    # global cwd
-    
-    # global responseValues
-    # responseValues = {}  
-   
-    # ###########################
-    # ## PROBABILITY OF USE AS PRODUCT OF INPUT LAYERS (for now)    
-    # varArray = []
-    # for i in usePredictors:
-    #     varArray.append(usePredictors[i])      
-    # varArray = np.array(varArray)    
-    # responseValues["Use"] = normScaler(np.sum(varArray, axis=0))
-    # print('------------------')
-    # print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
-
-    # ###########################
-    # ## CONVERT TO OCCUPANCY
-    # """True occupancy translates into a
-    # proportion of the landscape occupied.
-    # So, the prob of use, which is a function
-    # of covariates, needs to be discretized
-    # using trueOcc. So, if trueOcc is 0.2, the
-    # top twenty percent of prob use values are occupied."""
-    
-    # global trueOcc
-    # print('------------------')
 
     # Display widgets
-    display(slider_A, slider_B, value_output, plot_output)
+    slider_Vbox = widgets.VBox([slider_A, slider_B], layout=widgets.Layout(width='25%'))
+    graph_Vbox = widgets.VBox([plot_output, out], layout=widgets.Layout(width='75%'))
+    main_Hbox = widgets.HBox([slider_Vbox, graph_Vbox])
+    display(main_Hbox)
+    # display(slider_A, slider_B, value_output, plot_output)
     
     # Initialize chart on first load
     update_values(None)
@@ -404,7 +389,6 @@ def simulateReponse():
 
 
 def simulateOccupancyData():
-    
     global nodata; global cell_size; global extent; global srs; global n_rows; global n_cols
     global responseValues
     global prevPos
